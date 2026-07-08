@@ -113,6 +113,8 @@ func (app *application) snippetCreatePost(
 		return
 	}
 
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created")
+
 	http.Redirect(
 		w,
 		r,
