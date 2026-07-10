@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +27,17 @@ func extractCSRFToken(t *testing.T, body string) string {
 		t.Fatal("no csrf token found in body")
 	}
 
-	return html.UnescapeString(string(matches[1]))
+	token := matches[1]
+
+	token = html.UnescapeString(token)
+
+	token = strings.TrimSpace(token)
+
+	if token == "" {
+		t.Fatal("csrf token is empty")
+	}
+
+	return token
 }
 
 func newTestApplication(t *testing.T) *application {
@@ -86,4 +98,24 @@ func newTestServer(t *testing.T, h http.Handler) *testServer {
 	}
 
 	return &testServer{ts}
+}
+
+func (ts *testServer) postForm(
+	t *testing.T,
+	urlPath string,
+	form url.Values,
+) (int, http.Header, string) {
+	rs, err := ts.Client().PostForm(ts.URL+urlPath, form)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer rs.Body.Close()
+	body, err := io.ReadAll(rs.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytes.TrimSpace(body)
+
+	return rs.StatusCode, rs.Header, string(body)
 }
